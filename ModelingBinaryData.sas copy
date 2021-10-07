@@ -1,0 +1,154 @@
+/*
+Celine Ratulowski
+STAT 172
+Project 1
+Due: 10/1/2021
+Description: This code uses data about wine to create a logistic regression 
+model used to predict probability that a wine is high quality.
+*/
+
+
+/*IMPORT DATA  ------------------------------------------------------------ */
+proc import out = wine
+datafile = "/home/u49635676/sasuser.v94/winequalityN.csv"
+dbms = csv replace;
+guessingrows = 6497;
+run;
+
+
+/*CLEAN & TRANSFORM DATA  ------------------------------------------------- */
+
+/*Only keep needed variables*/
+data wine;
+set wine(keep = type quality alcohol sulphates chlorides 'residual sugar'n); 
+run;
+
+
+/*Verify variable types*/
+proc contents data = wine;
+run;
+/*the variable types are:
+alcohol: num
+chlorides: num
+quality: num 
+sulphates: num
+residual sugar: num
+type: char
+*/
+
+
+/*see levels of quality variable before we transform*/
+proc freq data = wine;
+tables quality;
+run;
+/*The wine quality in this table ranges from 3 - 9.
+I will consider anything ranked 7 or higher to be ranked highly, 
+and anything below 7 to be low quality. 
+
+create binary variable for quality
+	let y = 1 if quality > 6 (wine quality was high)
+    let y = 0 if quality <= 6 (wine wuality was low)
+*/
+data wine;
+set wine;
+if quality <= 6 then quality_bin = 0;
+	else quality_bin = 1;
+run;
+
+
+
+
+
+
+/*round to nearest whole number for alcohol, residual sugar, chlorides, and sulphates */
+data wine;
+set wine;
+alcohol = round(alcohol);
+chlorides = round(chlorides, 0.1);
+'residual sugar'n = round('residual sugar'n);
+sulphates = round(sulphates, 0.1);
+run;
+
+
+
+proc freq data = wine;
+/*tables quality*quality_bin;*/
+run;
+/*It seems that we properly created a binary variable for quality and
+all the other obervations have valid values*/
+
+
+
+/* Exploratory Analysis/Complete Separation ------------------------------------------------- */
+
+/*Histogram of binary and non binary response variable*/
+proc sgplot data = wine;
+histogram quality;
+run;
+
+proc sgplot data = wine;
+histogram quality_bin;
+run;
+
+/*Histograms of numeric variables */ 
+proc sgplot data = wine;
+histogram alcohol;
+run;
+
+proc sgplot data = wine;
+histogram chlorides;
+run;
+
+proc sgplot data = wine;
+histogram sulphates;
+run;
+
+proc sgplot data = wine;
+histogram 'residual sugar'n;
+run;
+
+
+/* look at relationship between each explanatory varable and quality */ 
+proc sgplot data = wine;
+scatter x = alcohol y = quality_bin / group = type;
+run;
+/* no split of explanatory variable (alcohol) completely separates 
+quality_bin = 0 and quality_bin = 1 */
+
+
+proc sgplot data = wine;
+scatter x = chlorides y = quality_bin / group = type;
+run;
+
+
+
+proc sgplot data = wine;
+scatter x = sulphates y = quality_bin / group = type;
+run;
+
+proc sgplot data = wine;
+scatter x = 'residual sugar'n y = quality_bin / group = type;
+run;
+
+proc freq data = wine;
+tables quality_bin * type;
+run;
+
+
+/* Logistic Regression ------------------------------------------------ */
+
+/*proc logistics doesn't include missing values*/
+proc logistic data = wine;
+class type / param = reference;
+model quality_bin(event = '1') = alcohol chlorides sulphates 'residual sugar'n type / clparm = both;
+output out = diags predicted = pred xbeta = linpred;
+run;
+
+
+
+
+
+
+
+
+
